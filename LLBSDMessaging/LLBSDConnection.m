@@ -281,6 +281,8 @@ static const int kLLBSDServerConnectionsBacklog = 1024;
 
 @implementation LLBSDConnectionServer
 
+@dynamic delegate;
+
 - (instancetype)initWithApplicationGroupIdentifier:(NSString *)applicationGroupIdentifier connectionIdentifier:(uint8_t)connectionIdentifier
 {
     self = [super initWithApplicationGroupIdentifier:applicationGroupIdentifier connectionIdentifier:connectionIdentifier];
