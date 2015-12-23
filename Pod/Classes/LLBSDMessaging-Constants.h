@@ -21,4 +21,4 @@ typedef NS_ENUM(NSInteger, LLBSDMessagingErrorCode) {
 };
 
 FOUNDATION_EXPORT double LLBSDMessagingVersionNumber;
-FOUNDATION_EXPORT const unsigned char *LLBSDMessagingVersionString;
+FOUNDATION_EXPORT const unsigned char LLBSDMessagingVersionString[];
