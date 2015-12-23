@@ -1,0 +1,14 @@
+PODS:
+  - LLBSDMessaging (0.1.0)
+
+DEPENDENCIES:
+  - LLBSDMessaging (from `../`)
+
+EXTERNAL SOURCES:
+  LLBSDMessaging:
+    :path: ../
+
+SPEC CHECKSUMS:
+  LLBSDMessaging: 3531e21444f01b845a9cf7fa9d93468594f24a84
+
+COCOAPODS: 0.39.0
