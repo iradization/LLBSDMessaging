@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = "LLBSDMessaging"
-  s.version          = "0.1.0"
+  s.version          = "0.2.0"
   s.summary          = "Interprocess communication via Berkeley sockets on iOS"
 
 # This description is used to generate tags and improve search results.

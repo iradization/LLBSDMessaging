@@ -59,7 +59,7 @@
     \param connectionIdentifier
     An identifier for the connection. Both ends of a connection should use the same identifier.
  */
-- (instancetype)initWithApplicationGroupIdentifier:(NSString *)applicationGroupIdentifier connectionIdentifier:(uint8_t)connectionIdentifier;
+- (instancetype)initWithApplicationGroupIdentifier:(NSString *)applicationGroupIdentifier connectionIdentifier:(NSString *)connectionIdentifier;
 
 /*!
     \brief

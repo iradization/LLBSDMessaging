@@ -22,6 +22,7 @@ static NSString * const kLLBSDConnectionMessageUserInfoKey = @"userInfo";
 static NSString * const kLLBSDConnectionMessageConnectionInfoKey = @"connectionInfo";
 
 static const pid_t kInvalidPid = -1;
+static NSString *_createSocketPath(NSString *applicationGroupIdentifier, NSString* connectionIdentifier);
 
 #pragma mark - LLBSDConnection
 
@@ -42,7 +43,7 @@ static const pid_t kInvalidPid = -1;
 
 static NSString *_LLBSDConnectionValidObservationContext = @"_LLBSDConnectionValidObservationContext";
 
-- (instancetype)initWithApplicationGroupIdentifier:(NSString *)applicationGroupIdentifier connectionIdentifier:(uint8_t)connectionIdentifier
+- (instancetype)initWithApplicationGroupIdentifier:(NSString *)applicationGroupIdentifier connectionIdentifier:(NSString *)connectionIdentifier
 {
     NSAssert(![self isMemberOfClass:[LLBSDConnection class]], @"Cannot instantiate the base class");
     
@@ -129,7 +130,7 @@ static NSString *_LLBSDConnectionValidObservationContext = @"_LLBSDConnectionVal
 
 #pragma mark - Private
 
-static NSString *_createSocketPath(NSString *applicationGroupIdentifier, uint8_t connectionIdentifier)
+static NSString *_createSocketPath(NSString *applicationGroupIdentifier, NSString* connectionIdentifier)
 {
 	NSString *socketPath = nil;
 	
@@ -142,12 +143,12 @@ static NSString *_createSocketPath(NSString *applicationGroupIdentifier, uint8_t
     NSString *tempGroupLocation = [NSString stringWithFormat:@"/tmp/%@", applicationGroupIdentifier];
     [[NSFileManager defaultManager] createDirectoryAtPath:tempGroupLocation withIntermediateDirectories:YES attributes:nil error:NULL];
 	
-	socketPath = [tempGroupLocation stringByAppendingPathComponent:[NSString stringWithFormat:@"%d", connectionIdentifier]];
+	socketPath = [tempGroupLocation stringByAppendingPathComponent:[NSString stringWithFormat:@"%@", connectionIdentifier]];
 #else
     NSURL *applicationGroupURL = [[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:applicationGroupIdentifier];
 	NSCAssert(applicationGroupURL != nil, @"Cannot retrieve the container URL for the application group identifier %@. Make sure that it has been added to the `com.apple.security.application-groups` entitlement.", applicationGroupIdentifier);
 
-    NSURL *socketURL = [applicationGroupURL URLByAppendingPathComponent:[NSString stringWithFormat:@"%d", connectionIdentifier]];
+    NSURL *socketURL = [applicationGroupURL URLByAppendingPathComponent:[NSString stringWithFormat:@"%@", connectionIdentifier]];
 	socketPath = socketURL.path;
 #endif /* TARGET_IPHONE_SIMULATOR */
 	
@@ -157,7 +158,7 @@ static NSString *_createSocketPath(NSString *applicationGroupIdentifier, uint8_t
 	return socketPath;
 }
 
-static dispatch_data_t _createFramedMessageData(LLBSDMessage *message, LLBSDProcessInfo *info, NSError **errorRef)
+static dispatch_data_t _createFramedMessageData(LLBSDMessage *message, LLBSDProcessInfo *info, NSError **errorRef, BOOL bUseSecureCoding)
 {
     NSMutableDictionary *content = [NSMutableDictionary dictionary];
     [content setValue:message.name forKey:kLLBSDConnectionMessageNameKey];
@@ -167,7 +168,7 @@ static dispatch_data_t _createFramedMessageData(LLBSDMessage *message, LLBSDProc
     NSMutableData *contentData = [NSMutableData data];
 
     NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:contentData];
-    archiver.requiresSecureCoding = YES;
+    archiver.requiresSecureCoding = bUseSecureCoding;
 
     @try {
         [archiver encodeObject:content forKey:NSKeyedArchiveRootObjectKey];
@@ -215,13 +216,16 @@ static LLBSDMessage *_createMessageFromHTTPMessage(CFHTTPMessageRef message, NSS
         }
 
         NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingWithData:bodyData];
-        unarchiver.requiresSecureCoding = YES;
+        unarchiver.requiresSecureCoding = allowedClasses != nil;
 
         NSSet *classes = [NSSet setWithObjects:[NSDictionary class], [NSString class], [NSNumber class], [LLBSDProcessInfo class], nil];
         classes = [classes setByAddingObjectsFromSet:allowedClasses];
 
         @try {
-            content = [unarchiver decodeObjectOfClasses:classes forKey:NSKeyedArchiveRootObjectKey];
+            if (allowedClasses)
+                content = [unarchiver decodeObjectOfClasses:classes forKey:NSKeyedArchiveRootObjectKey];
+            else
+                content = [unarchiver decodeObjectForKey:NSKeyedArchiveRootObjectKey];
         }
         @catch (NSException *exception) {
             if ([exception.name isEqualToString:NSInvalidUnarchiveOperationException]) {
@@ -283,7 +287,7 @@ static const int kLLBSDServerConnectionsBacklog = 1024;
 
 @dynamic delegate;
 
-- (instancetype)initWithApplicationGroupIdentifier:(NSString *)applicationGroupIdentifier connectionIdentifier:(uint8_t)connectionIdentifier
+- (instancetype)initWithApplicationGroupIdentifier:(NSString *)applicationGroupIdentifier connectionIdentifier:(NSString *)connectionIdentifier
 {
     self = [super initWithApplicationGroupIdentifier:applicationGroupIdentifier connectionIdentifier:connectionIdentifier];
     if (self == nil) {
@@ -397,7 +401,7 @@ static const int kLLBSDServerConnectionsBacklog = 1024;
     }
 
     NSError *messageError = nil;
-    dispatch_data_t message_data = _createFramedMessageData(message, info, &messageError);
+    dispatch_data_t message_data = _createFramedMessageData(message, info, &messageError, self.allowedMessageClasses != nil);
 
     if (!message_data) {
         if (completion) {
@@ -680,7 +684,7 @@ static NSString *_findProcessNameForProcessIdentifier(pid_t pid)
     }
 
     NSError *messageError = nil;
-    dispatch_data_t message_data = _createFramedMessageData(message, self.processInfo, &messageError);
+    dispatch_data_t message_data = _createFramedMessageData(message, self.processInfo, &messageError, self.allowedMessageClasses != nil);
 
     if (!message_data) {
         if (completion) {
